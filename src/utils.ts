@@ -98,6 +98,7 @@ function reformatMetadata(
   input.settings.metadata = input.settings.metadata || {}
   input.settings.outputSelection = input.settings.outputSelection || {}
   input.settings.outputSelection[fileName] = input.settings.outputSelection[fileName] || {}
+  input.settings.libraries = input.settings.libraries || {}
 
   input.settings.outputSelection[fileName][contractName] = [
     'evm.bytecode',
@@ -157,5 +158,37 @@ export async function recompile(
     deployedBytecode: `0x${contract.evm.deployedBytecode.object}`,
     metadata: contract.metadata.trim()
   }
+}
+
+/**
+ * Embeds (libraryName -> address pairs) into a stringified metadata. Useful if
+ * you are submitting metadata for linked contracts.
+ * @param  {StringMap}  libraries        ex: { MyLib: <address>, ... }
+ * @param  {string}     metadata         stringified metadata.json
+ * @param  {object}     linkReferences   evm.bytecode.linkReferences object
+ * @return {string}                      stringified metadata.json
+ */
+export function addLibraryLinksToMetadata(
+  libraries: StringMap,
+  metadataString: string,
+  linkReferences: any
+) : string {
+  const librarySettings : any = {};
+  const metadata = JSON.parse(metadataString);
+
+  const sourceNames = Object.keys(linkReferences);
+
+  for (const source of sourceNames){
+    librarySettings[source] = {};
+    const libraryNames = Object.keys(linkReferences[source]);
+
+    for(const library of libraryNames){
+      if (libraries[library]){
+        librarySettings[source][library] = libraries[library];
+      }
+    }
+  }
+  metadata.settings.libraries = librarySettings;
+  return JSON.stringify(metadata);
 }
 
